@@ -39,7 +39,7 @@ int letra7seg[26]={ // declara as letras em hexa (letra7seg[0] = A, [1] = B, [2]
 
 int valorDisplay[4] = {0, 0, 0, 0};
 
-int contagem = 0;
+int contagem = 0, botao = 0;
 
 void TIM1_TRG_COM_TIM11_IRQHandler(){
 	GPIOC->ODR = ~letra7seg[contagem];
