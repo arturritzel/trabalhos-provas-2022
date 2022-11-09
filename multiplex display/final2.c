@@ -6,11 +6,7 @@
  *  PC0 no pino A de todos os displays, PC1 no pino B, PC2 no C, PC3 no D, e assim por diante, até PC6 no pino G
  */
 
-//#define tamanho 6
-
 char frase[] = "multiplexacao com displays";
-
-
 
 int numero[10]={
 		0x3F, // 0
@@ -111,7 +107,7 @@ int main(){
 	RCC->APB2ENR|=0x20000; // habilita clock tim10
 	RCC->APB2ENR|=0x40000; // habilita clock tim11
 
-	TIM10->PSC=249; // troca o display q ta ligado (4ms) //////////////// precisa ser mais de 60*4 Hz (menos de 0,004167s)
+	TIM10->PSC=249; // troca o display q ta ligado (4ms) /// precisa ser mais de 60*4 Hz (menos de 0,004167s)
 	TIM10->CR1=0x05;
 	TIM10->ARR=249;
 	TIM10->DIER|=0x01; //habilita interrupção timer10
@@ -124,13 +120,6 @@ int main(){
 	TIM11->DIER|=0x01; //habilita interrupção timer11
 	NVIC_SetPriority(TIM1_TRG_COM_TIM11_IRQn, 3); // prioridade 3
 	NVIC_EnableIRQ(TIM1_TRG_COM_TIM11_IRQn); // habilita interrupção no controlador
-
-
-	/*
-	valorDisplay[0] = letra[letraV];
-	valorDisplay[1] = letra[letraA];
-	valorDisplay[2] = letra[letraN];
-	valorDisplay[3] = letra[letraA]; // */
 
 	while(1){
 
