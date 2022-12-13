@@ -1,0 +1,118 @@
+#include "stm32f4xx.h"
+
+/*
+ *  
+ */
+
+int letra[26]={ // declara as letras em hexa (letra[0] = A, [1] = B, [2] = C, etc.
+	0x77, 0x7C, 0x58, 0x5E, 0x79,
+	0x71, 0x6F, 0x76, 0x06, 0x0E,
+	0x70, 0x38, 0x55, 0x54, 0x5C,
+	0x73, 0x67, 0x50, 0x6D, 0x78,
+	0x3E, 0x1C, 0x1D, 0x76, 0x66,
+	0x5B
+};
+
+int numero[10]={
+		0x3F, // 0
+		0x06, // 1
+		0x5B, // 2
+		0x4F, // 3
+		0x66, // 4
+		0x6D, // 5
+		0x7D, // 6
+		0x27, // 7
+		0x7F, // 8
+		0x6F, // 9
+};
+
+int qualDisplay = 0, contaSeg = 0;
+
+int valorDisplay[2] = {0, 0};
+
+void adicionaSeg(){ // aumenta segundo
+	valorDisplay[1]++;
+	if(valorDisplay[1] > 9){
+		valorDisplay[1] = 0;
+		valorDisplay[0]++;
+		if(valorDisplay[0] > 5)
+			valorDisplay[0] = 0;
+	}
+}
+
+void TIM1_UP_TIM10_IRQHandler(){
+
+	switch(qualDisplay){
+	    case 0:
+	        GPIOC->ODR = ~numero[valorDisplay[qualDisplay]];
+	        GPIOA->ODR = 0x1;
+	        break;
+
+	    case 1:
+	        GPIOC->ODR = ~numero[valorDisplay[qualDisplay]];
+	        GPIOA->ODR = 0x2;
+	        break;
+	    }
+
+	qualDisplay++;
+	if(qualDisplay > 1) qualDisplay = 0;
+
+	TIM10->SR &= ~(0x01);    //limpando flag do timer10
+}
+
+void TIM1_TRG_COM_TIM11_IRQHandler(){
+
+	contaSeg++;
+	if(contaSeg >= 2){ // verifica se ja passou um segundo (2 ciclos de 0,5 seg)
+		contaSeg = 0;
+		adicionaSeg();
+	}
+
+	TIM11->SR &= ~(0x01);    //limpando flag do timer11
+}
+
+int main(){
+
+	RCC->AHB1ENR=0x00000087;  // habilita os contadores
+	GPIOA->MODER=0x28000005;  // configura A0 e A1 como saída
+	GPIOB->MODER=0x00000555;  // configura os pinos B0, B1, B2, B3, B4, B5 como saida
+	GPIOC->MODER=0x00555555;  // configura PC0-PC11 com função de saída e PC12-PC15 com função de entrada
+
+	GPIOC->ODR = 0; // limpa as saidas da porta C
+	GPIOB->ODR = 0; // limpa as saidas da porta B
+
+	RCC->APB2ENR|=0x20000; // habilita clock tim10
+	RCC->APB2ENR|=0x40000; // habilita clock tim11
+
+	TIM10->PSC=99; // troca o display q ta ligado (1.5ms) //////////////// precisa ser mais de 60*4 Hz (menos de 0,004167s) e mais que 1kHz pra ficar legal o som do alarme
+	TIM10->CR1=0x05;
+	TIM10->ARR=99;
+	TIM10->DIER|=0x01; //habilita interrupção timer10
+	NVIC_SetPriority(TIM1_UP_TIM10_IRQn, 4); // prioridade 4
+	NVIC_EnableIRQ(TIM1_UP_TIM10_IRQn); // habilita interrupção no controlador
+
+	TIM11->PSC=3999; // muda oq tem no display (0,5s)
+	TIM11->CR1=0x05;
+	TIM11->ARR=1999;
+	TIM11->DIER|=0x01; //habilita interrupção timer11
+	NVIC_SetPriority(TIM1_TRG_COM_TIM11_IRQn, 3); // prioridade 3
+	NVIC_EnableIRQ(TIM1_TRG_COM_TIM11_IRQn); // habilita interrupção no controlador
+
+
+
+	int apertando = 0, apertou = 0;
+	while(1){
+		//if((GPIOA->IDR&=0x01)==0x01 && apertou[3] == 0) apertando[3]++; // caso pa0 esteja sendo apertado
+		//if((GPIOA->IDR&=0x01)!=0x01 && apertou[3] == 1) apertou[3] = 0; // caso pa0 nao esteja sendo apertado
+
+		if((GPIOC->IDR&=0x2000)!=0x2000 && apertou == 0) apertando++; // pc13 sendo apertado
+		if((GPIOC->IDR&=0x2000)==0x2000 && apertou == 1) apertou = 0; //  nao sendo apertado
+
+		if(apertando > 10000){ // pc13
+			apertou = 1;
+			apertando = 0;
+
+			adicionaSeg();
+		}
+	}
+}
